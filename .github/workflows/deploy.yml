@@ -1,0 +1,37 @@
+name: Deploy Flask App with Docker to Azure
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure Container Registry (ACR)
+        uses: azure/docker-login@v1
+        with:
+          login-server: YOUR_ACR_LOGIN_SERVER
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and tag Docker image
+        run: |
+          docker build -t githubrepo.azurecr.io/flask-app:latest .
+          docker tag githubrepo.azurecr.io/flask-app:latest githubrepo.azurecr.io/flask-app:${{ github.sha }}
+
+      - name: Push Docker image to ACR
+        run: |
+          docker push githubrepo.azurecr.io/flask-app:latest
+          docker push githubrepo.azurecr.io/flask-app:${{ github.sha }}
+
+      - name: Deploy to Azure Web App for Containers
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: "firstFlaskApp"
+          images: "githubrepo.azurecr.io/flask-app:latest"
